@@ -218,6 +218,15 @@
                 free((void *) tmpStr2);
 
             }
+            else if (strcmp(tmpStr1, "portaudio") == 0) {
+
+                tmpStr2 = parameters_lookup_string(fileConfig, "raw.interface.devicename");
+
+                cfg->interface = interface_construct_portaudio(tmpStr2);
+                cfg->channel_map = NULL;
+
+                free((void *) tmpStr2);
+            }
             else {
                 printf("raw.interface.type: Invalid type\n");
                 exit(EXIT_FAILURE);
