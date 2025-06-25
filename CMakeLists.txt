@@ -9,12 +9,30 @@ option(ODAS_INSTALL_EXECUTABLES "Install the odaslive and odasserver executables
 option(ODAS_FORCE_BIN_AND_LIB_DIRS "Force the installation of the odas library and executables in the bin and lib directories" ON)
 option(ODAS_DISABLE_INSTALL "Disable the installation of the odas library and executables" OFF)
 
+# set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG}   -fsanitize=address -g")
+# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=address -g")
+# set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=address")
 
 find_package(PkgConfig REQUIRED)
+
 pkg_check_modules(PC_FFTW3 REQUIRED fftw3f)
-pkg_check_modules(PC_ALSA REQUIRED alsa)
+include_directories(${PC_FFTW3_INCLUDE_DIRS})
+link_directories(${PC_FFTW3_LIBRARY_DIRS})
+
 pkg_check_modules(PC_LIBCONFIG REQUIRED libconfig)
-pkg_check_modules(PC_PULSEAUDIO REQUIRED libpulse-simple)
+include_directories(${PC_LIBCONFIG_INCLUDE_DIRS})
+link_directories(${PC_LIBCONFIG_LIBRARY_DIRS})
+
+if(APPLE)
+    pkg_check_modules(PC_PORTAUDIO REQUIRED portaudio-2.0)
+    include_directories(${PC_PORTAUDIO_INCLUDE_DIRS})
+    link_directories(${PC_PORTAUDIO_LIBRARY_DIRS})
+
+    add_definitions(-DODAS_USE_PORTAUDIO)
+else()
+    pkg_check_modules(PC_ALSA REQUIRED alsa)
+    pkg_check_modules(PC_PULSEAUDIO REQUIRED libpulse-simple)
+endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
 
@@ -200,12 +218,16 @@ add_library(odas SHARED
 
 target_link_libraries(odas
     ${PC_FFTW3_LIBRARIES}
-    ${PC_ALSA_LIBRARIES}
     ${PC_LIBCONFIG_LIBRARIES}
-    ${PC_PULSEAUDIO_LIBRARIES}
     m
     pthread
 )
+
+if(APPLE)
+    target_link_libraries(odas ${PC_PORTAUDIO_LIBRARIES})
+else()
+    target_link_libraries(odas ${PC_ALSA_LIBRARIES} ${PC_PULSEAUDIO_LIBRARIES})
+endif()
 
 add_executable(odaslive
     demo/odaslive/main.c
