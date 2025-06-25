@@ -35,9 +35,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#ifdef ODAS_USE_PORTAUDIO
+#include <portaudio.h>
+#else
 #include <alsa/asoundlib.h>
 #include <pulse/simple.h>
 #include <pulse/error.h>
+#endif
 
 #include "../general/format.h"
 #include "../general/interface.h"
@@ -57,10 +61,15 @@ typedef struct src_hops_obj {
     interface_obj *interface;
 
     FILE * fp;
+#ifndef ODAS_USE_PORTAUDIO
     snd_pcm_t * ch;
     pa_simple * pa;
     pa_sample_spec ss;
     pa_channel_map cm;
+#else
+    PaStream * pa;
+    unsigned int * channel_map;
+#endif
     struct sockaddr_in sserver;
     int sid;
 
@@ -77,7 +86,11 @@ typedef struct src_hops_cfg {
 
     format_obj * format;
     interface_obj * interface;
+#ifndef ODAS_USE_PORTAUDIO
     pa_channel_map * channel_map;
+#else
+    unsigned int * channel_map;
+#endif
 
 } src_hops_cfg;
 
@@ -96,6 +109,9 @@ void src_hops_open_interface_file(src_hops_obj * obj);
 void src_hops_open_interface_soundcard(src_hops_obj * obj);
 
 void src_hops_open_interface_pulseaudio(src_hops_obj * obj);
+#ifdef ODAS_USE_PORTAUDIO
+void src_hops_open_interface_portaudio(src_hops_obj * obj);
+#endif
 
 void src_hops_open_interface_socket(src_hops_obj * obj);
 
@@ -106,6 +122,9 @@ void src_hops_close_interface_file(src_hops_obj * obj);
 void src_hops_close_interface_soundcard(src_hops_obj * obj);
 
 void src_hops_close_interface_pulseaudio(src_hops_obj * obj);
+#ifdef ODAS_USE_PORTAUDIO
+void src_hops_close_interface_portaudio(src_hops_obj * obj);
+#endif
 
 void src_hops_close_interface_socket(src_hops_obj * obj);
 
@@ -118,6 +137,9 @@ int src_hops_process_interface_soundcard(src_hops_obj * obj);
 int src_hops_process_interface_socket(src_hops_obj * obj);
 
 int src_hops_process_interface_pulseaudio(src_hops_obj * obj);
+#ifdef ODAS_USE_PORTAUDIO
+int src_hops_process_interface_portaudio(src_hops_obj * obj);
+#endif
 
 void src_hops_process_format_binary_int08(src_hops_obj * obj);
 

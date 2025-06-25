@@ -219,7 +219,7 @@
 
     }
 
-    interface_obj * interface_construct_pulseaudio(const char * sourceName) {
+interface_obj * interface_construct_pulseaudio(const char * sourceName) {
 
         interface_obj * obj;
 
@@ -265,7 +265,24 @@
 
         return obj;        
 
-    }
+}
+
+interface_obj * interface_construct_portaudio(const char * deviceName) {
+
+    interface_obj * obj;
+
+    obj = (interface_obj *) malloc(sizeof(interface_obj));
+
+    obj->type = interface_portaudio;
+    obj->fileName = (char *) NULL;
+    obj->ip = (char *) NULL;
+    obj->port = 0;
+    obj->deviceName = (char *) malloc(sizeof(char) * (strlen(deviceName)+1));
+    strcpy(obj->deviceName, deviceName);
+
+    return obj;
+
+}
 
    interface_obj * interface_construct_soundcard(const unsigned int card, const unsigned int device) {
 
@@ -421,7 +438,7 @@
         // | Soundcard or Pulseaudio                                  |
         // +----------------------------------------------------------+
 
-            if (obj->type == interface_soundcard || obj->type == interface_pulseaudio) {
+            if (obj->type == interface_soundcard || obj->type == interface_pulseaudio || obj->type == interface_portaudio) {
                 
                 clone->deviceName = (char *) malloc(sizeof(char) * (strlen(obj->deviceName) + 1));
                 strcpy(clone->deviceName, obj->deviceName);
@@ -495,6 +512,11 @@
                 case interface_pulseaudio:
 
                     printf("type = pulseaudio, devicename = %s\n", obj->deviceName);
+
+                    break;
+                case interface_portaudio:
+
+                    printf("type = portaudio, devicename = %s\n", obj->deviceName);
 
                     break;
 

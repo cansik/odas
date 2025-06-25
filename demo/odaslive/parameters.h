@@ -20,8 +20,9 @@
 
     msg_hops_cfg * parameters_msg_hops_mics_raw_config(const char * fileConfig);
 
+#ifndef ODAS_USE_PORTAUDIO
     pa_channel_map* parameters_pa_channel_map_config(const char* fileConfig);
-
+#endif
 
     mod_mapping_cfg * parameters_mod_mapping_mics_config(const char * fileConfig);
 

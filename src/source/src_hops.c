@@ -26,10 +26,11 @@
 *
 */
 
+#include <unistd.h>
 #include <source/src_hops.h>
 
-src_hops_obj * src_hops_construct(const src_hops_cfg * src_hops_config, const msg_hops_cfg * msg_hops_config) {
-
+src_hops_obj * src_hops_construct(const src_hops_cfg * src_hops_config, const msg_hops_cfg * msg_hops_config)
+{
     src_hops_obj * obj;
     unsigned int nBytes;
 
@@ -43,6 +44,13 @@ src_hops_obj * src_hops_construct(const src_hops_cfg * src_hops_config, const ms
 
     obj->format = format_clone(src_hops_config->format);
     obj->interface = interface_clone(src_hops_config->interface);
+#ifdef ODAS_USE_PORTAUDIO
+    if (src_hops_config->channel_map != NULL) {
+        obj->channel_map = src_hops_config->channel_map;
+    } else {
+        obj->channel_map = NULL;
+    }
+#else
     if (src_hops_config->channel_map != NULL)
     {
         // Will not be null if in pulseaudio mode
@@ -54,12 +62,14 @@ src_hops_obj * src_hops_construct(const src_hops_cfg * src_hops_config, const ms
         printf("Error: Pulseaudio interface requires channel map.\n");
         exit(EXIT_FAILURE);
     }
+#endif
 
     memset(obj->bytes, 0x00, 4 * sizeof(char));
 
     if (!((obj->interface->type == interface_file ||
             obj->interface->type == interface_soundcard ||
             obj->interface->type == interface_pulseaudio ||
+            obj->interface->type == interface_portaudio ||
             obj->interface->type == interface_socket) &&
           (obj->format->type == format_binary_int08 ||
            obj->format->type == format_binary_int16 ||
@@ -123,6 +133,7 @@ void src_hops_open(src_hops_obj * obj) {
 
         break;
 
+#ifndef ODAS_USE_PORTAUDIO
         case interface_soundcard:
 
             src_hops_open_interface_soundcard(obj);
@@ -133,6 +144,15 @@ void src_hops_open(src_hops_obj * obj) {
 
                 src_hops_open_interface_pulseaudio(obj);
 
+        break;
+#endif
+        case interface_portaudio:
+#ifdef ODAS_USE_PORTAUDIO
+            src_hops_open_interface_portaudio(obj);
+#else
+            printf("PortAudio support not built.\n");
+            exit(EXIT_FAILURE);
+#endif
         break;
 
         case interface_socket:
@@ -163,6 +183,63 @@ void src_hops_open_interface_file(src_hops_obj * obj) {
 
 }
 
+#ifdef ODAS_USE_PORTAUDIO
+void src_hops_open_interface_portaudio(src_hops_obj * obj) {
+    PaError err;
+
+    err = Pa_Initialize();
+    if (err != paNoError) {
+        printf("Source hops: Cannot init PortAudio: %s\n", Pa_GetErrorText(err));
+        exit(EXIT_FAILURE);
+    }
+
+    int deviceIndex = -1;
+    for (int i = 0; i < Pa_GetDeviceCount(); i++) {
+        const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
+        if (info && info->maxInputChannels >= obj->nChannels &&
+            strcmp(info->name, obj->interface->deviceName) == 0) {
+            deviceIndex = i;
+            break;
+            }
+    }
+
+    if (deviceIndex < 0) {
+        printf("Source hops: Cannot find portaudio device %s\n", obj->interface->deviceName);
+        exit(EXIT_FAILURE);
+    }
+
+    PaStreamParameters inputParams;
+    inputParams.device = deviceIndex;
+    inputParams.channelCount = obj->nChannels;
+    switch (obj->format->type) {
+    case format_binary_int08: inputParams.sampleFormat = paInt8; break;
+    case format_binary_int16: inputParams.sampleFormat = paInt16; break;
+    case format_binary_int24: inputParams.sampleFormat = paInt24; break;
+    case format_binary_int32: inputParams.sampleFormat = paInt32; break;
+    default:
+        printf("Source hops: Invalid format.\n");
+        exit(EXIT_FAILURE);
+    }
+    inputParams.suggestedLatency = Pa_GetDeviceInfo(deviceIndex)->defaultLowInputLatency;
+    inputParams.hostApiSpecificStreamInfo = NULL;
+
+    err = Pa_OpenStream(&(obj->pa), &inputParams, NULL, obj->fS,
+                        obj->hopSize, paClipOff, NULL, NULL);
+    if (err != paNoError) {
+        printf("Source hops: Cannot open portaudio device %s: %s\n",
+               obj->interface->deviceName, Pa_GetErrorText(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = Pa_StartStream(obj->pa);
+    if (err != paNoError) {
+        printf("Source hops: Cannot start portaudio stream: %s\n", Pa_GetErrorText(err));
+        exit(EXIT_FAILURE);
+    }
+}
+#endif
+
+#ifndef ODAS_USE_PORTAUDIO
 void src_hops_open_interface_soundcard(src_hops_obj * obj) {
 
     snd_pcm_hw_params_t * hw_params;
@@ -252,7 +329,9 @@ void src_hops_open_interface_soundcard(src_hops_obj * obj) {
     }
 
 }
+#endif
 
+#ifndef ODAS_USE_PORTAUDIO
 void src_hops_open_interface_pulseaudio(src_hops_obj * obj) {
 
     pa_sample_format_t format;
@@ -303,6 +382,7 @@ void src_hops_open_interface_pulseaudio(src_hops_obj * obj) {
     }
 
 }
+#endif
 
 void src_hops_open_interface_socket(src_hops_obj * obj) {
 
@@ -328,7 +408,7 @@ void src_hops_close(src_hops_obj * obj) {
             src_hops_close_interface_file(obj);
 
         break;
-
+#ifndef ODAS_USE_PORTAUDIO
         case interface_soundcard:
 
             src_hops_close_interface_soundcard(obj);
@@ -339,6 +419,15 @@ void src_hops_close(src_hops_obj * obj) {
 
             src_hops_close_interface_pulseaudio(obj);
 
+        break;
+#endif
+        case interface_portaudio:
+#ifdef ODAS_USE_PORTAUDIO
+            src_hops_close_interface_portaudio(obj);
+#else
+            printf("PortAudio support not built.\n");
+            exit(EXIT_FAILURE);
+#endif
         break;
 
         case interface_socket:
@@ -362,18 +451,30 @@ void src_hops_close_interface_file(src_hops_obj * obj) {
 
 }
 
+#ifndef ODAS_USE_PORTAUDIO
 void src_hops_close_interface_soundcard(src_hops_obj * obj) {
 
     snd_pcm_close(obj->ch);
 
 }
+#endif
    
+#ifndef ODAS_USE_PORTAUDIO
 void src_hops_close_interface_pulseaudio(src_hops_obj * obj) {
 
     if (obj->pa != NULL)
         pa_simple_free(obj->pa);
 
 }
+#else
+void src_hops_close_interface_portaudio(src_hops_obj * obj) {
+    if (obj->pa) {
+        Pa_StopStream(obj->pa);
+        Pa_CloseStream(obj->pa);
+    }
+    Pa_Terminate();
+}
+#endif
 
 void src_hops_close_interface_socket(src_hops_obj * obj) {
     
@@ -428,15 +529,23 @@ int src_hops_process(src_hops_obj * obj) {
         break;
 
         case interface_soundcard:
-
+#ifndef ODAS_USE_PORTAUDIO
             rtnValue = src_hops_process_interface_soundcard(obj);
 
         break;
 
         case interface_pulseaudio:
-
                 rtnValue = src_hops_process_interface_pulseaudio(obj);
+#endif
+        break;
 
+        case interface_portaudio:
+#ifdef ODAS_USE_PORTAUDIO
+            rtnValue = src_hops_process_interface_portaudio(obj);
+#else
+            printf("PortAudio support not built.\n");
+            exit(EXIT_FAILURE);
+#endif
         break;
 
         case interface_socket:
@@ -480,6 +589,7 @@ int src_hops_process_interface_file(src_hops_obj * obj) {
     return rtnValue;
 }
 
+#ifndef ODAS_USE_PORTAUDIO
 int src_hops_process_interface_soundcard(src_hops_obj * obj) {
 
     unsigned int nSamples;
@@ -519,6 +629,16 @@ int src_hops_process_interface_pulseaudio(src_hops_obj * obj) {
     return rtnValue;
 
 }
+#endif
+
+#ifdef ODAS_USE_PORTAUDIO
+int src_hops_process_interface_portaudio(src_hops_obj * obj) {
+    if (Pa_ReadStream(obj->pa, obj->buffer, obj->hopSize) != paNoError) {
+        return -1;
+    }
+    return 0;
+}
+#endif
 
 
 int src_hops_process_interface_socket(src_hops_obj * obj) {

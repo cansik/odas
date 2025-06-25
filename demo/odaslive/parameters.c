@@ -199,6 +199,7 @@
                 cfg->interface = interface_construct_soundcard(tmpInt1, tmpInt2);
 
             }
+#ifndef ODAS_USE_PORTAUDIO
             else if (strcmp(tmpStr1, "soundcard_name") == 0) {
 
                 tmpStr2 = parameters_lookup_string(fileConfig, "raw.interface.devicename");
@@ -217,6 +218,16 @@
 
                 free((void *) tmpStr2);
 
+            }
+#endif
+            else if (strcmp(tmpStr1, "portaudio") == 0) {
+
+                tmpStr2 = parameters_lookup_string(fileConfig, "raw.interface.devicename");
+
+                cfg->interface = interface_construct_portaudio(tmpStr2);
+                cfg->channel_map = NULL;
+
+                free((void *) tmpStr2);
             }
             else {
                 printf("raw.interface.type: Invalid type\n");
@@ -257,6 +268,7 @@
 
     }
 
+#ifndef ODAS_USE_PORTAUDIO
     pa_channel_map* parameters_pa_channel_map_config(const char* fileConfig)
     {
         unsigned int nChannels = parameters_count(fileConfig, "raw.interface.channelmap");
@@ -293,6 +305,7 @@
         
         return map;
     }
+#endif
 
     mod_mapping_cfg * parameters_mod_mapping_mics_config(const char * fileConfig) {
 
