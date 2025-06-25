@@ -42,8 +42,8 @@
         obj->nMaxElements = nMaxElements;
 
         pthread_mutex_init(&(obj->use), NULL);
-        sem_init(&(obj->pop), 0, 0);
-        sem_init(&(obj->push), 0, nMaxElements);
+        odas_sem_init(&(obj->pop), 0);
+        odas_sem_init(&(obj->push), nMaxElements);
 
         return obj;
 
@@ -51,8 +51,8 @@
 
     void fifo_destroy(fifo_obj * obj) {
 
-        sem_destroy(&(obj->pop));
-        sem_destroy(&(obj->push));
+        odas_sem_destroy(&(obj->pop));
+        odas_sem_destroy(&(obj->push));
         pthread_mutex_destroy(&(obj->use));
         free((void *) obj->array);
         free((void *) obj);
@@ -61,7 +61,7 @@
 
     void fifo_push(fifo_obj * obj, void * element) {
 
-        sem_wait(&(obj->push));
+        odas_sem_wait(&(obj->push));
 
         pthread_mutex_lock(&(obj->use));
 
@@ -70,7 +70,7 @@
 
         pthread_mutex_unlock(&(obj->use));
 
-        sem_post(&(obj->pop));
+        odas_sem_post(&(obj->pop));
 
     }
 
@@ -78,7 +78,7 @@
 
         void * rtnPtr;
 
-        sem_wait(&(obj->pop));
+        odas_sem_wait(&(obj->pop));
 
         pthread_mutex_lock(&(obj->use));
 
@@ -89,7 +89,7 @@
 
         pthread_mutex_unlock(&(obj->use));
 
-        sem_post(&(obj->push));
+        odas_sem_post(&(obj->push));
 
         return rtnPtr;
 

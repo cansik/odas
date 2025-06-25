@@ -142,6 +142,7 @@ set(SRC
     src/utils/matrix.c
     src/utils/pcm.c
     src/utils/random.c
+    src/utils/portaudio_helper.c
     src/utils/transcendental.c
 
     src/aconnector/acon_categories.c

@@ -28,6 +28,7 @@
 
 #include <unistd.h>
 #include <source/src_hops.h>
+#include <utils/portaudio_helper.h>
 
 src_hops_obj * src_hops_construct(const src_hops_cfg * src_hops_config, const msg_hops_cfg * msg_hops_config)
 {
@@ -187,11 +188,7 @@ void src_hops_open_interface_file(src_hops_obj * obj) {
 void src_hops_open_interface_portaudio(src_hops_obj * obj) {
     PaError err;
 
-    err = Pa_Initialize();
-    if (err != paNoError) {
-        printf("Source hops: Cannot init PortAudio: %s\n", Pa_GetErrorText(err));
-        exit(EXIT_FAILURE);
-    }
+    odas_portaudio_init();
 
     int deviceIndex = -1;
     for (int i = 0; i < Pa_GetDeviceCount(); i++) {
@@ -472,7 +469,7 @@ void src_hops_close_interface_portaudio(src_hops_obj * obj) {
         Pa_StopStream(obj->pa);
         Pa_CloseStream(obj->pa);
     }
-    Pa_Terminate();
+    odas_portaudio_terminate();
 }
 #endif
 

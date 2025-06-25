@@ -4,8 +4,9 @@
     #include "parameters.h"
     #include "configs.h"
     #include "objects.h"
-    #include "threads.h"
-    #include "profiler.h"
+#include "threads.h"
+#include "profiler.h"
+#include <utils/portaudio_helper.h>
 
     #include <getopt.h>
     #include <time.h>
@@ -155,6 +156,10 @@
             printf("+--------------------------------------------+\n");
 
             }
+
+#ifdef ODAS_USE_PORTAUDIO
+        odas_portaudio_init();
+#endif
 
         // +------------------------------------------------------+
         // | Single thread                                        |

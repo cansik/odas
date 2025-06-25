@@ -32,7 +32,21 @@
     #include <stdlib.h>
     #include <string.h>
     #include <pthread.h>
-    #include <semaphore.h>
+#ifdef __APPLE__
+#include <dispatch/dispatch.h>
+typedef struct { dispatch_semaphore_t sem; } odas_sem_t;
+static inline int odas_sem_init(odas_sem_t *s, unsigned int value) { s->sem = dispatch_semaphore_create(value); return s->sem == NULL ? -1 : 0; }
+static inline void odas_sem_destroy(odas_sem_t *s) { (void)s; }
+static inline int odas_sem_wait(odas_sem_t *s) { return (int)dispatch_semaphore_wait(s->sem, DISPATCH_TIME_FOREVER); }
+static inline int odas_sem_post(odas_sem_t *s) { return (int)dispatch_semaphore_signal(s->sem); }
+#else
+#include <semaphore.h>
+typedef sem_t odas_sem_t;
+static inline int odas_sem_init(odas_sem_t *s, unsigned int value) { return sem_init(s, 0, value); }
+static inline void odas_sem_destroy(odas_sem_t *s) { sem_destroy(s); }
+static inline int odas_sem_wait(odas_sem_t *s) { return sem_wait(s); }
+static inline int odas_sem_post(odas_sem_t *s) { return sem_post(s); }
+#endif
     #include <stdio.h>
 
     typedef struct fifo_obj {
@@ -41,9 +55,9 @@
         unsigned int nElements;
         unsigned int nMaxElements;
 
-        pthread_mutex_t use;
-        sem_t push;
-        sem_t pop;
+    pthread_mutex_t use;
+    odas_sem_t push;
+    odas_sem_t pop;
 
     } fifo_obj;
 
