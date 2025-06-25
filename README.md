@@ -9,6 +9,24 @@ ROS: Please visite the [odas_ros project](https://github.com/introlab/odas_ros).
 
 [![ODAS Demonstration](https://img.youtube.com/vi/n7y2rLAnd5I/0.jpg)](https://youtu.be/n7y2rLAnd5I)
 
+# MacOS Build Support
+This branch implements macOS build support. It's more hacky proof of concept and not intended for real use. Right now the project builds and can be run using single-threaded mode:
+
+```bash
+# install dependencies
+brew install cmake fftw libconfig portaudio pkg-config
+
+# build
+mkdir build && cd build
+cmake ..
+
+make -j4
+
+cd bin
+# be sure to copy the config here
+./odaslive -s -v -c config/odaslive/respeaker_4_mic_array_macos.cfg
+```
+
 # License
 
 ODAS is provided with the [MIT](LICENSE) license.
